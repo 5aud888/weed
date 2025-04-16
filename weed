@@ -1,0 +1,475 @@
+
+-- 🌿 weed.wtf | Final GUI (Preserves scripts 100%) | Whitelisted Notice + Toggle Logic
+
+-- Cleanup
+pcall(function() game.CoreGui:FindFirstChild("WeedWtfGUI"):Destroy() end)
+
+-- Services
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+-- Notification
+pcall(function()
+    StarterGui:SetCore("SendNotification", {
+        Title = "🌿weed.wtf",
+        Text = "🌿weed.wtf | whitelisted.",
+        Duration = 3
+    })
+end)
+
+-- UI Setup
+local gui = Instance.new("ScreenGui", CoreGui)
+gui.Name = "WeedWtfGUI"
+gui.ResetOnSpawn = false
+
+local function addCorner(parent)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = parent
+end
+
+-- Main Frame
+local frame = Instance.new("Frame", gui)
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 500, 0, 300)
+frame.Position = UDim2.new(0.5, -250, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+frame.BorderSizePixel = 1
+addCorner(frame)
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+title.BorderColor3 = Color3.fromRGB(0, 255, 0)
+title.Text = "🌿 weed.wtf"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextColor3 = Color3.fromRGB(0, 255, 0)
+title.TextXAlignment = Enum.TextXAlignment.Left
+addCorner(title)
+
+-- Dragging
+local dragging, dragInput, dragStart, startPos
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Sidebar
+local sidebar = Instance.new("Frame", frame)
+sidebar.Size = UDim2.new(0, 100, 1, -40)
+sidebar.Position = UDim2.new(0, 0, 0, 40)
+sidebar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+sidebar.BorderColor3 = Color3.fromRGB(0, 255, 0)
+sidebar.BorderSizePixel = 1
+addCorner(sidebar)
+
+local mainTab = Instance.new("TextButton", sidebar)
+mainTab.Size = UDim2.new(1, 0, 0, 40)
+mainTab.Text = "Main"
+mainTab.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+mainTab.TextColor3 = Color3.fromRGB(0, 255, 0)
+mainTab.Font = Enum.Font.GothamBold
+mainTab.TextSize = 16
+addCorner(mainTab)
+
+-- Content Panel
+local content = Instance.new("Frame", frame)
+content.Name = "MainContent"
+content.Size = UDim2.new(1, -100, 1, -40)
+content.Position = UDim2.new(0, 100, 0, 40)
+content.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+content.BorderColor3 = Color3.fromRGB(0, 255, 0)
+content.BorderSizePixel = 1
+addCorner(content)
+
+-- Fade Toggle (Right Ctrl)
+UIS.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.RightControl then
+        
+        local fadeOut = not gui:GetAttribute("Faded")
+        gui:SetAttribute("Faded", fadeOut)
+        for _, obj in ipairs(gui:GetDescendants()) do
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("Frame") then
+                local props = {}
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    props.TextTransparency = fadeOut and 1 or 0
+                end
+                props.BackgroundTransparency = fadeOut and 1 or 0
+                TweenService:Create(obj, TweenInfo.new(0.3), props):Play()
+            end
+        end
+    
+    end
+end)
+
+-- Script Button Generator
+local togglers = {}
+local function createToggleButton(name, posY, scriptText)
+    local button = Instance.new("TextButton", content)
+    button.Size = UDim2.new(0, 360, 0, 40)
+    button.Position = UDim2.new(0, 20, 0, posY)
+    button.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    button.BorderColor3 = Color3.fromRGB(0, 255, 0)
+    button.TextColor3 = Color3.fromRGB(0, 255, 0)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 16
+    button.Text = name
+    addCorner(button)
+
+    local check = Instance.new("TextLabel", button)
+    check.Size = UDim2.new(0, 25, 0, 25)
+    check.Position = UDim2.new(1, -30, 0.5, -12)
+    check.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    check.TextColor3 = Color3.fromRGB(255, 255, 255)
+    check.Text = "✔"
+    check.Font = Enum.Font.GothamBold
+    check.TextSize = 16
+    check.Visible = false
+    addCorner(check)
+
+    local activeThread = nil
+    button.MouseButton1Click:Connect(function()
+        if activeThread then
+            check.Visible = false
+            activeThread:Disconnect()
+            activeThread = nil
+        else
+            check.Visible = true
+            activeThread = task.spawn(function()
+                loadstring(scriptText)()
+            end)
+        end
+    end)
+
+    table.insert(togglers, {
+        Button = button,
+        Thread = function() return activeThread end
+    })
+end
+
+-- Add All Three Buttons With Script Contents
+createToggleButton("Camlock", 10, [[local plr = game.Players.LocalPlayer
+local cam = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local camLockActive = false
+local jumping = false
+local shootCooldown = false
+
+-- Find nearest hoop and return a vertically optimized aim point
+local function getLockTarget()
+	local closestDist = math.huge
+	local target = nil
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("Sound") and obj.Name == "Swish" and obj.Parent then
+			local hoop = obj.Parent.Position
+			local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+
+			if root then
+				local dist = (root.Position - hoop).Magnitude
+				if dist < closestDist then
+					closestDist = dist
+
+					-- ✅ Adjust vertical aim to increase green shot potential
+					local offsetY = 19.22 + (0.10 * dist)  -- Raise slightly more with distance
+					target = Vector3.new(hoop.X, hoop.Y + offsetY, hoop.Z)
+				end
+			end
+		end
+	end
+
+	return target
+end
+
+-- Auto shoot while camera is locked
+local function autoShoot()
+	if shootCooldown then return end
+	local char = plr.Character
+	if char and char:FindFirstChild("Humanoid") and camLockActive then
+		shootCooldown = true
+
+		-- 🏀 Simulate shoot key (click or input) - adjust for your control scheme
+		local VirtualInputManager = game:GetService("VirtualInputManager")
+		VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+		task.wait(0.15)
+		VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+
+		task.delay(0.4, function()
+			shootCooldown = false
+		end)
+	end
+end
+
+-- Keep camera locked while jumping
+RunService.RenderStepped:Connect(function()
+	if camLockActive then
+		local target = getLockTarget()
+		if target then
+			cam.CFrame = CFrame.new(cam.CFrame.Position, target)
+		end
+	end
+end)
+
+-- Detect jump and trigger camlock + autoshoot
+UIS.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if input.KeyCode == Enum.KeyCode.Space then
+		jumping = true
+		camLockActive = true
+		autoShoot()
+	end
+end)
+
+-- Unlock when landing
+RunService.Heartbeat:Connect(function()
+	local char = plr.Character
+	local hum = char and char:FindFirstChild("Humanoid")
+	if hum and hum.FloorMaterial ~= Enum.Material.Air then
+		if jumping then
+			jumping = false
+			camLockActive = false
+		end
+	end
+end)
+]])
+createToggleButton("Autoguard", 60, [[-- 🌿 weed.wtf autoguard v3 - anti-CFrame, hand tracking, prediction, auto-disable w/ ball
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local highlightInstance = nil
+local currentTarget = nil
+local autoGuardEnabled = false
+local debounce = false
+
+local predictionTime = 0.2 -- Predict ahead in seconds
+local highlightColor = Color3.fromRGB(0, 255, 0)
+
+-- Notification
+StarterGui:SetCore("SendNotification", {
+	Title = "weed.wtf",
+	Text = "🌿weed.wtf loaded.",
+	Duration = 3
+})
+
+-- Find closest player
+local function getClosestPlayer(maxDistance)
+	local closest = nil
+	local shortestDistance = maxDistance
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local myPos = localPlayer.Character.HumanoidRootPart.Position
+			local theirPos = player.Character.HumanoidRootPart.Position
+			local distance = (myPos - theirPos).Magnitude
+
+			if distance < shortestDistance then
+				shortestDistance = distance
+				closest = player
+			end
+		end
+	end
+
+	return closest
+end
+
+-- Find hand or fallback part
+local function getTargetPart(char)
+	return char:FindFirstChild("RightHand") or char:FindFirstChild("LeftHand") or char:FindFirstChild("HumanoidRootPart")
+end
+
+-- Check if local player has the ball
+local function hasBall()
+	local char = localPlayer.Character
+	if not char then return false end
+
+	for _, obj in pairs(char:GetChildren()) do
+		if obj:IsA("Tool") or obj.Name:lower():find("ball") then
+			return true
+		end
+	end
+
+	return false
+end
+
+-- Create highlight
+local function highlightPlayer(player)
+	if highlightInstance then
+		highlightInstance:Destroy()
+	end
+
+	if player and player.Character then
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "AutoGuardHighlight"
+		highlight.FillColor = highlightColor
+		highlight.OutlineColor = highlightColor
+		highlight.FillTransparency = 0.3
+		highlight.OutlineTransparency = 0
+		highlight.Adornee = player.Character
+		highlight.Parent = player.Character
+		highlightInstance = highlight
+	end
+end
+
+-- Turn off autoguard
+local function disableAutoguard()
+	autoGuardEnabled = false
+	currentTarget = nil
+	if highlightInstance then
+		highlightInstance:Destroy()
+		highlightInstance = nil
+	end
+end
+
+-- Follow loop
+RunService.RenderStepped:Connect(function()
+	if autoGuardEnabled and currentTarget and currentTarget.Character and localPlayer.Character then
+		-- Auto disable if you get the ball
+		if hasBall() then
+			disableAutoguard()
+			return
+		end
+
+		local targetChar = currentTarget.Character
+		local targetPart = getTargetPart(targetChar)
+		local myChar = localPlayer.Character
+
+		if targetPart and myChar:FindFirstChild("Humanoid") and myChar:FindFirstChild("HumanoidRootPart") then
+			local myHRP = myChar.HumanoidRootPart
+
+			-- Prediction
+			local velocity = targetPart.Velocity or Vector3.zero
+			local predictedPosition = targetPart.Position + velocity * predictionTime
+			local moveDirection = (predictedPosition - myHRP.Position).Unit
+
+			local distance = (myHRP.Position - predictedPosition).Magnitude
+			if distance > 2 then
+				myChar.Humanoid:Move(moveDirection, false)
+			else
+				myChar.Humanoid:Move(Vector3.zero, false)
+			end
+		end
+	end
+end)
+
+-- Keybind: E to toggle
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+	if isProcessed or debounce then return end
+	if input.KeyCode == Enum.KeyCode.E then
+		debounce = true
+
+		-- Prevent enabling while holding the ball
+		if hasBall() then
+			StarterGui:SetCore("SendNotification", {
+				Title = "weed.wtf",
+				Text = "You have the ball! Can't autoguard.",
+				Duration = 2
+			})
+		else
+			if autoGuardEnabled then
+				disableAutoguard()
+			else
+				local target = getClosestPlayer(30)
+				if target then
+					currentTarget = target
+					highlightPlayer(target)
+					autoGuardEnabled = true
+				end
+			end
+		end
+
+		task.wait(0.3)
+		debounce = false
+	end
+end)
+]])
+createToggleButton("Indicator", 110, [[-- Final Ultra-Optimized Hoopz 3PT Range Glow Script (Accurate Proximity)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Config
+local checkInterval = 0.15 -- how often to check (seconds)
+local rangeBuffer = 5 -- how close to the 3PT line to glow
+local neonColor = Color3.fromRGB(57, 255, 20)
+
+-- Notification
+pcall(function()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "🌿weed.wtf",
+        Text = "loaded",
+        Duration = 3
+    })
+end)
+
+-- Highlight setup
+local highlight = Instance.new("Highlight")
+highlight.Name = "RangeHighlight"
+highlight.FillColor = neonColor
+highlight.OutlineColor = neonColor
+highlight.FillTransparency = 0.3
+highlight.OutlineTransparency = 0
+highlight.Adornee = Character
+highlight.Parent = Character
+highlight.Enabled = false
+
+-- Cache all 3PT line parts
+local cached3ptLines = {}
+for _, part in ipairs(workspace:GetDescendants()) do
+    if part:IsA("BasePart") and part.Name:lower():find("3pt") then
+        table.insert(cached3ptLines, part)
+    end
+end
+
+-- Accurate proximity check using ClosestPoint
+local function isNear3PT()
+    for _, line in ipairs(cached3ptLines) do
+        local closestPoint = line.CFrame:PointToObjectSpace(HumanoidRootPart.Position)
+        local clampedPoint = Vector3.new(
+            math.clamp(closestPoint.X, -line.Size.X/2, line.Size.X/2),
+            math.clamp(closestPoint.Y, -line.Size.Y/2, line.Size.Y/2),
+            math.clamp(closestPoint.Z, -line.Size.Z/2, line.Size.Z/2)
+        )
+        local worldPoint = line.CFrame:PointToWorldSpace(clampedPoint)
+        local dist = (worldPoint - HumanoidRootPart.Position).Magnitude
+
+        if dist <= rangeBuffer then
+            return true
+        end
+    end
+    return false
+end
+
+-- Glow loop
+task.spawn(function()
+    while true do
+        highlight.Enabled = isNear3PT()
+        task.wait(checkInterval)
+    end
+end)
+]])
